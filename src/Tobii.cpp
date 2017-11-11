@@ -4,7 +4,7 @@
 */
 //#include "stdafx.h"
 #include "Tobii.h"
-
+#include "Timer.h"
 #define WIN32_LEAN_AND_MEAN
 
 using namespace std;
@@ -21,6 +21,8 @@ static TX_HANDLE g_hGlobalInteractorSnapshot = TX_EMPTY_HANDLE;
 cv::Point eyeAttention;
 
 FILE *fp;
+int Nowtime = 0;
+bool fileStart = true;
 
 void *tobiipublisher;
 
@@ -28,6 +30,16 @@ void *tobiipublisher;
 TX_CONTEXTHANDLE hContext = TX_EMPTY_HANDLE;
 TX_TICKET hConnectionStateChangedTicket = TX_INVALID_TICKET;
 TX_TICKET hEventHandlerTicket = TX_INVALID_TICKET;
+
+
+string IntString(int x){
+	stringstream ss;
+	string rise;
+	ss << x;
+	ss >> rise;
+	return rise;
+}
+
 
 /*
 * Initializes g_hGlobalInteractorSnapshot with an interactor that has the Gaze Point behavior.
@@ -148,19 +160,38 @@ void TX_CALLCONVENTION OnEngineConnectionStateChanged(TX_CONNECTIONSTATE connect
 /*
 * Handles an event from the Gaze Point data stream.
 */
+
 void OnGazeDataEvent(TX_HANDLE hGazeDataBehavior)
 {
 	TX_GAZEPOINTDATAEVENTPARAMS eventParams;
 
 	if (txGetGazePointDataEventParams(hGazeDataBehavior, &eventParams) == TX_RESULT_OK) 
 	{
-
 		eyeAttention.x = eventParams.X;
 		eyeAttention.y = eventParams.Y;
 
+		
 		//  向所有订阅者发送消息
 		char update[20];
 		sprintf(update, "%d %d", eyeAttention.x, eyeAttention.y);
+		
+		SYSTEMTIME sys;
+		GetLocalTime(&sys);
+		string filename = IntString(sys.wYear) + "_" + IntString(sys.wMonth) + "_" + IntString(sys.wDay) + "_" + IntString(sys.wHour) + "_" + IntString(sys.wMinute) + ".txt";
+		int HourAndMinute = sys.wHour * 60 + sys.wMinute;
+		if ((HourAndMinute - Nowtime) % 2 == 0 && (HourAndMinute - Nowtime)>0){
+			if (fileStart){
+				fclose(fp);
+				fp = fopen(filename.c_str(), "w+");
+				Nowtime = HourAndMinute;
+			}
+			fileStart = false;
+		}
+		else{
+			fileStart = true;
+		}
+		fprintf(fp, "%d,%d,%4d/%02d/%02d,%02d:%02d:%02d,%d\n", eyeAttention.x, eyeAttention.y, sys.wYear, sys.wMonth, sys.wDay, sys.wHour, sys.wMinute, sys.wSecond, getSystemStamp());
+		fflush(fp);
 		/*cout << "x: " << eyeAttention.x << endl;
 		cout << "y: " << eyeAttention.y << endl;*/
 		//TRACE("x: %d\r\n", eyeAttention.x);
@@ -227,18 +258,18 @@ void TX_CALLCONVENTION HandleEvent(TX_CONSTHANDLE hAsyncData, TX_USERPARAM userP
 	}
 
 	/*暂时不需要fixation数据和EYE数据*/
-	/*
-	if (txGetEventBehavior(hEvent, &hBehavior, TX_BEHAVIORTYPE_EYEPOSITIONDATA) == TX_RESULT_OK) {
-	OnEyeDataEvent(hBehavior);
-	txReleaseObject(&hBehavior);
+	
+	/*if (txGetEventBehavior(hEvent, &hBehavior, TX_BEHAVIORTYPE_EYEPOSITIONDATA) == TX_RESULT_OK) {
+		OnEyeDataEvent(hBehavior);
+		txReleaseObject(&hBehavior);
 	}
 
 
 	if (txGetEventBehavior(hEvent, &hBehavior, TX_BEHAVIORTYPE_FIXATIONDATA) == TX_RESULT_OK) {
-	OnFixationDataEvent(hBehavior);
-	txReleaseObject(&hBehavior);
-	}
-	*/
+		OnFixationDataEvent(hBehavior);
+		txReleaseObject(&hBehavior);
+	}*/
+	
 	// NOTE since this is a very simple application with a single interactor and a single data stream, 
 	// our event handling code can be very simple too. A more complex application would typically have to 
 	// check for multiple behaviors and route events based on interactor IDs.
@@ -249,7 +280,6 @@ void TX_CALLCONVENTION HandleEvent(TX_CONSTHANDLE hAsyncData, TX_USERPARAM userP
 BOOL tobii_init()
 {
 	BOOL success;
-
 	// initialize and enable the context that is our link to the EyeX Engine.
 	success = txInitializeEyeX(TX_EYEXCOMPONENTOVERRIDEFLAG_NONE, NULL, NULL, NULL, NULL) == TX_RESULT_OK;
 	success &= txCreateContext(&hContext, TX_FALSE) == TX_RESULT_OK;
@@ -263,7 +293,11 @@ BOOL tobii_init()
 	cv::string port(tobiiport);
 	int rc = zmq_bind(tobiipublisher, ("tcp://*:" + port).c_str());
 	assert(rc == 0);
-	cout << success << endl;
+	SYSTEMTIME sys;
+	GetLocalTime(&sys);
+	Nowtime = sys.wHour*60 + sys.wMinute;
+	string filename = IntString(sys.wYear) + "_" + IntString(sys.wMonth) + "_" + IntString(sys.wDay) + "_" + IntString(sys.wHour) + "_" + IntString(sys.wMinute) + ".txt";
+	fp = fopen(filename.c_str(), "w+");
 	return success;
 }
 
@@ -275,3 +309,4 @@ void tobii_uninit()
 	txShutdownContext(hContext, TX_CLEANUPTIMEOUT_DEFAULT, TX_FALSE);
 	txReleaseContext(&hContext);
 }
+

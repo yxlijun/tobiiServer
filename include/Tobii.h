@@ -20,7 +20,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
-
 //tobii≥ı ºªØ
 BOOL tobii_init();
 
@@ -28,5 +27,7 @@ BOOL tobii_init();
 void tobii_uninit();
 
 void DrawAttentionPicture(cv::Mat &eyeImage, const int x, const int y);
+
+
 
 #endif

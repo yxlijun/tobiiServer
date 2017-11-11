@@ -15,14 +15,21 @@ int main()
 {
 	//´ò¿ªtobiiÂ¼ÖÆ
 	init_SendPpt();
+	init_SendscreenSize();
 	tobii_init();
-	Timer t;
-	t.StartTimer(1000, std::bind(Screen, "../"));
+	thread SendScreenSize(Send_ScreenSize);
+	thread SendScreen(Screen);
+
+	SendScreenSize.join();
+	SendScreen.join();
+
+	//Timer t;
+	//t.StartTimer(1000, std::bind(Screen));
 	while (true)
 	{
 		;
 	}
-	system("pause");
+	//system("pause");
 	return 0;
 }
 
