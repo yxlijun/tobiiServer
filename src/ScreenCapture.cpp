@@ -10,7 +10,7 @@
 #define pptPort "5558"
 #define ScreenSizePort "5559"
 
-const int pptSize =	612000;
+const int pptSize =	6220800;
 void *picpubisher;
 void * ScreenSizepubisher;
 using namespace std;
@@ -106,7 +106,7 @@ void Screen()
 		string path = filename;
 		Mat img = imread(path);
 		Mat Pic;
-		resize(img, Pic, Size(600, 340));
+		resize(img, Pic, Size(1920, 1080));
 		char *buffer = new char[pptSize];
 
 		for (int c = 0; c < Pic.channels(); c++){
